@@ -321,7 +321,7 @@ class Artist:
         self.load_images(content_img_path, style_img_path)
         self.define_content_style_layers(content_layer, style_layers)
 
-    def train(
+    def run(
         self,
         epochs=1000,
         alpha=10,
