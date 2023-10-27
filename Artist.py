@@ -438,7 +438,6 @@ class Artist:
               non_improving_round+=1
               if non_improving_round>=early_stopping_rounds:
                 break
-
             writer.add_scalar(tag='Style loss', scalar_value=total_cost, global_step=i)
             writer.add_scalar(tag='Content loss', scalar_value=self.J_content.numpy(), global_step=i)
             writer.add_scalar(tag='Total loss', scalar_value=self.J.numpy(), global_step=i)
