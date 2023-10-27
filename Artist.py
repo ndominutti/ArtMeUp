@@ -15,7 +15,7 @@ import os
 import glob
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter("/content/ArtMeUp/runs")
-from typing import Tupple, List
+from typing import Tuple, List
 
 
 class Artist:
@@ -23,13 +23,13 @@ class Artist:
     Class in charge of the Style Transfer Learning task, using VGG19 model
 
     Args:
-      img_size (Tupple, defaults to (400,400)): height*size of the images 
+      img_size (Tuple, defaults to (400,400)): height*size of the images 
       random_seed (int, defaults to 272): seed for reproducibility
       pretrained_model_path(str, defaults to None): model where the pretrained model is stored
     """
 
     def __init__(
-        self, img_size:Tupple=(400, 400), random_seed:int=272, pretrained_model_path:str=None
+        self, img_size:Tuple=(400, 400), random_seed:int=272, pretrained_model_path:str=None
     ):
 
         self.img_size = img_size
@@ -140,16 +140,16 @@ class Artist:
         )
         return J_style_layer
 
-    def define_content_style_layers(self, content_layer:List[Tupple], style_layers:List[Tupple]):
+    def define_content_style_layers(self, content_layer:List[Tuple], style_layers:List[Tuple]):
         """
         Set the layers from where to catch style features and the weight
         assigned to each layer.
         
         Args:
-          content_layer(List[Tupple]): list with a single Tupple containing the name
+          content_layer(List[Tuple]): list with a single Tuple containing the name
           of the layer and the weight to be applied. Must always be the final
           layer.
-          style_layerscontent_layer(List[Tupple]): list with as many Tupples as 
+          style_layerscontent_layer(List[Tuple]): list with as many Tuple as 
           existing layes, containing the name of the layers and the weights
           to be applied to each one
 
@@ -319,8 +319,8 @@ class Artist:
         self,
         content_img_path:str=None,
         style_img_path:str=None,
-        content_layer:List[Tupple]=[("block5_conv4", 1)],
-        style_layers:List[Tupple]=None,
+        content_layer:List[Tuple]=[("block5_conv4", 1)],
+        style_layers:List[Tuple]=None,
     ):
         """
         Initialize the model
@@ -328,11 +328,11 @@ class Artist:
         Args:
         content_img_path(str, defaults to None): path to the content image
         style_img_path(str, defaults to None): path to the style image
-          content_layer(List[Tupple], defaults to [("block5_conv4", 1)]): list 
-          with a single Tupple containing the name of the layer and the weight 
+          content_layer(List[Tuple], defaults to [("block5_conv4", 1)]): list 
+          with a single Tuple containing the name of the layer and the weight 
           to be applied. Must always be the final layer.
-          style_layers(List[Tupple], defaults to None): list with as many
-          Tupples as existing layers, containing the name of the layers and 
+          style_layers(List[Tuple], defaults to None): list with as many
+          Tuple as existing layers, containing the name of the layers and 
           the weights to be applied to each one
         """
         self.load_images(content_img_path, style_img_path)
@@ -351,7 +351,7 @@ class Artist:
         save_path:str="output/images/",
         plot:bool=False,
         plot_step:int=250,
-        fig_size:Tupple=(7, 7),
+        fig_size:Tuple=(7, 7),
         early_stopping_rounds:int=100,
         skip_frames:bool=True
     ):
@@ -455,7 +455,7 @@ class ImgsToVideo:
       fps(int, defaults to 3): output file's fps
     """
 
-    def __init__(self, images_path:str, frame_size:Tupple=(400, 400), fps:int=3):
+    def __init__(self, images_path:str, frame_size:Tuple=(400, 400), fps:int=3):
         self.images_path = images_path
         self.frameSize = frame_size
         self.fps = fps
