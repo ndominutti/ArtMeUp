@@ -12,6 +12,8 @@ from datetime import datetime
 import cv2
 import os
 import glob
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("/content/ArtMeUp/runs")
 
 
 class Artist:
@@ -34,14 +36,13 @@ class Artist:
                 "model/vgg19_weights_tf_dim_ordering_tf_kernels_notop.h5"
             )
         tf.random.set_seed(random_seed)
-        vgg = tf.keras.applications.VGG19(
+        self.vgg = tf.keras.applications.VGG19(
             include_top=False,
             input_shape=(img_size[1], img_size[0], 3),
             weights=pretrained_model_path,
         )
-        vgg.trainable = False
-        self.vgg = vgg
-        self.layers = vgg.layers
+        self.vgg.trainable = False
+        self.layers = self.vgg.layers
 
     def load_images(self, content_img_path=None, style_img_path=None):
         """
@@ -90,7 +91,7 @@ class Artist:
         a_C_unrolled = tf.reshape(a_C, shape=[m, n_H * n_W, n_C])
         a_G_unrolled = tf.reshape(a_G, shape=[m, n_H * n_W, n_C])
 
-        # compute the cost with tensorflow
+        # compute the cost (Normalization constant * sum of squared disferences)
         J_content = (1 / (4 * n_H * n_W * n_C)) * tf.reduce_sum(
             tf.square(tf.subtract(a_C_unrolled, a_G_unrolled))
         )
@@ -134,8 +135,7 @@ class Artist:
 
         # Computing the loss
         J_style_layer = (
-            1
-            / (4 * n_C**2 * (n_H * n_W) ** 2)
+            (1 / (2 * n_C * n_H * n_W))\
             * tf.math.reduce_sum(tf.square(tf.subtract(GS, GG)))
         )
 
@@ -156,8 +156,6 @@ class Artist:
         -----
         Hint: The deeper the layer the more complex the features.
         """
-        vgg = self.vgg
-
         if style_layers is None:
             self.STYLE_LAYERS = [
                 ("block1_conv1", 0.2),
@@ -168,18 +166,15 @@ class Artist:
             ]
         else:
             self.STYLE_LAYERS = style_layers
+        self.vgg_model_outputs = self.get_layer_outputs(self.vgg, content_layer)
 
-        self.vgg_model_outputs = self.get_layer_outputs(vgg, content_layer)
 
     def get_layer_outputs(self, vgg, content_layer):
         """Creates a vgg model that returns a list of intermediate output values."""
-        vgg = self.vgg
         layer_names = self.STYLE_LAYERS
         layer_names.extend(content_layer)
-
-        outputs = [vgg.get_layer(layer[0]).output for layer in layer_names]
-        model = tf.keras.Model([vgg.input], outputs)
-
+        outputs = [self.vgg.get_layer(layer[0]).output for layer in layer_names]
+        model = tf.keras.Model([self.vgg.input], outputs)
         return model
 
     def compute_style_cost(self, style_image_output, generated_image_output):
@@ -193,27 +188,22 @@ class Artist:
         Returns:
         J_style -- tensor representing a scalar value, style cost defined above by equation (2)
         """
-        STYLE_LAYERS = self.STYLE_LAYERS
-
         # initialize the overall style cost
         J_style = 0
-
         # Set a_S to be the hidden layer activation from the layer we have selected.
         a_S = style_image_output[:-1]
-
         # Set a_G to be the output of the choosen hidden layers.
         a_G = generated_image_output[:-1]
-        for i, weight in zip(range(len(a_S)), STYLE_LAYERS):
+
+        for i, weight in zip(range(len(a_S)), self.STYLE_LAYERS):
             # Compute style_cost for the current layer
             J_style_layer = self.compute_layer_style_cost(a_S[i], a_G[i])
-
             # Add weight * J_style_layer of this layer to overall style cost
             J_style += weight[1] * J_style_layer
-
         return J_style
 
     @tf.function()
-    def total_cost(self, J_content, J_style, alpha=10, beta=40):
+    def total_cost(self, J_content, J_style, alpha, beta):
         """
         Computes the total cost function
 
@@ -261,49 +251,45 @@ class Artist:
         return Image.fromarray(tensor)
 
     def preprocess(self):
-        """ """
-        vgg_model_outputs = self.vgg_model_outputs
-        content_image = self.content_image
-        style_image = self.style_image
+        """ 
+        """
+        #Generated image starts being = to content image in the 1st epoch
         generated_image = tf.Variable(
-            tf.image.convert_image_dtype(content_image, tf.float32)
+            tf.image.convert_image_dtype(self.content_image, tf.float32)
         )
         self.generated_image = generated_image
+        self.a_G = self.vgg_model_outputs(generated_image)
 
         preprocessed_content = tf.Variable(
-            tf.image.convert_image_dtype(content_image, tf.float32)
+            tf.image.convert_image_dtype(self.content_image, tf.float32)
         )
-        self.a_C = vgg_model_outputs(preprocessed_content)
-        self.a_G = vgg_model_outputs(generated_image)
+        self.a_C = self.vgg_model_outputs(preprocessed_content)
 
         preprocessed_style = tf.Variable(
-            tf.image.convert_image_dtype(style_image, tf.float32)
+            tf.image.convert_image_dtype(self.style_image, tf.float32)
         )
-        self.a_S = vgg_model_outputs(preprocessed_style)
+        self.a_S = self.vgg_model_outputs(preprocessed_style)
 
     def set_optimizer(self, learning_rate):
         """ """
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     def train_step(self, generated_image, alpha, beta):
-        a_S = self.a_S
-        a_G = self.a_G
-        a_C = self.a_C
-
+        """
+        """
         with tf.GradientTape() as tape:
-
-            a_G = self.vgg_model_outputs(generated_image)
-
+            self.a_G = self.vgg_model_outputs(generated_image)
+            print('*'*50)
             # Style cost
-            J_style = self.compute_style_cost(a_S, a_G)
-
+            self.J_style = self.compute_style_cost(self.a_S, self.a_G)
+            # print(f'Style cost: {self.J_style}\n')
             # Content cost
-            J_content = self.compute_content_cost(a_C, a_G)
+            self.J_content = self.compute_content_cost(self.a_C, self.a_G)
+            # print(f'Content cost: {self.J_content}\n')
+            print('*'*50)
             # Total cost
-            J = self.total_cost(J_content, J_style, alpha=alpha, beta=beta)
-
-        grad = tape.gradient(J, generated_image)
-
+            self.J = self.total_cost(self.J_content, self.J_style, alpha=alpha, beta=beta)
+        grad = tape.gradient(self.J, generated_image)
         self.optimizer.apply_gradients([(grad, generated_image)])
         generated_image.assign(self.clip_0_1(generated_image))
         self.generated_image = generated_image
@@ -324,8 +310,8 @@ class Artist:
     def run(
         self,
         epochs=1000,
-        alpha=10,
-        beta=40,
+        alpha=1,
+        beta=5,
         verbose=False,
         verbose_step=250,
         learning_rate=0.03,
@@ -335,8 +321,10 @@ class Artist:
         plot=False,
         plot_step=250,
         fig_size=(7, 7),
+        early_stopping_rounds=20
     ):
-        """ """
+        """ 
+        """
         self.preprocess()
         self.set_optimizer(learning_rate)
 
@@ -349,8 +337,12 @@ class Artist:
             os.mkdir(save_path)
             self.save_path = save_path
 
+        
+        non_improving_round = 0
         for i in range(epochs):
             self.train_step(self.generated_image, alpha=alpha, beta=beta)
+            if i == 0:
+              lowest_overal_cost  = self.J
             if verbose:
                 if i % verbose_step == 0:
                     print(f"Epoch {i} ")
@@ -374,6 +366,27 @@ class Artist:
                     else:
                         image = self.tensor_to_image(self.generated_image)
                     image.save(f"{save_path}/{i}.jpg")
+            print(self.J_style.numpy())
+            writer.add_scalar(tag='Style loss', scalar_value=self.J_style.numpy(), global_step=i)
+            writer.add_scalar(tag='Content loss', scalar_value=self.J_content.numpy(), global_step=i)
+            writer.add_scalar(tag='Total loss', scalar_value=self.J.numpy(), global_step=i)
+
+            if self.J < lowest_overal_cost:
+              lowest_overal_cost = self.J
+              non_improving_round = 0
+            else:
+              non_improving_round+=1
+              if non_improving_round>=early_stopping_rounds:
+                break
+
+
+
+
+
+
+
+
+
 
 
 class ImgsToVideo:
@@ -428,6 +441,7 @@ class ImgsToVideo:
 
         self.read_images()
         images = self.imgs
+
         # Multiply the 1st image to create an smooth beginning
         if expand_beggining:
             if "0" in [x.split(".")[0] for x in images]:
@@ -451,3 +465,26 @@ class ImgsToVideo:
             out.write(img)
 
         out.release()
+
+
+if __name__ =='__main__':
+  artist = Artist(img_size=(800,800), pretrained_model_path='ArtMeUp/model/vgg19_weights_tf_dim_ordering_tf_kernels_notop.h5')
+  STYLE_LAYERS = [
+            ('block1_conv1', .025),
+            ('block2_conv1', .75),
+            ('block3_conv1', .3),
+            ('block4_conv1', .4),
+            ('block5_conv1', .2)]
+  artist.initialize(content_img_path='./trial_img.jpeg', style_img_path='/content/ArtMeUp/trial_images/style.jpg', style_layers=STYLE_LAYERS)
+  artist.run(epochs=300,
+             beta=1,
+             alpha=1,
+             verbose=True,
+             verbose_step=100,
+             learning_rate=0.05,
+             save_images=True,
+             save_path='/content/ArtMeUp/output/images/',
+             save_step=3,
+             plot=True,
+             plot_step=25,
+             fig_size=(14,8))
