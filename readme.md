@@ -23,3 +23,5 @@ To use this repo you should:
 1) Clone it to your machine
 2) Depending in the objective pursued you should instanciate class __Artist__, __ImgsToVideo__ or both (take a glance to this [sample notebook](https://colab.research.google.com/drive/1k-E8njmqnKmWNzwkAvfIbaFzT3XF_VFL?usp=sharing#scrollTo=tDO4kVJP83nB) to see an end to end process)
 
+Have in mind that when performing task 1, the __Artist__ will store the generated images in the ArtMeUp/output/images DIR, under a sub-dir with the time of the run. You can control the amount of saved images and another functionalities through the _run_ method in the __Artist__ class.
+
