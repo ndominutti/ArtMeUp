@@ -11,9 +11,11 @@ import tensorflow as tf
 from tensorflow.python.framework.ops import EagerTensor
 from datetime import datetime
 import cv2
+import PIL
 import os
 import glob
 from torch.utils.tensorboard import SummaryWriter
+
 writer = SummaryWriter("/content/ArtMeUp/runs")
 from typing import Tuple, List
 
@@ -23,15 +25,17 @@ class Artist:
     Class in charge of the Style Transfer Learning task, using VGG19 model
 
     Args:
-      img_size (Tuple, defaults to (400,400)): height*size of the images 
+      img_size (Tuple, defaults to (400,400)): height*size of the images
       random_seed (int, defaults to 272): seed for reproducibility
       pretrained_model_path(str, defaults to None): model where the pretrained model is stored
     """
 
     def __init__(
-        self, img_size:Tuple=(400, 400), random_seed:int=272, pretrained_model_path:str=None
+        self,
+        img_size: Tuple = (400, 400),
+        random_seed: int = 272,
+        pretrained_model_path: str = None,
     ):
-
         self.img_size = img_size
         if pretrained_model_path is None:
             pretrained_model_path = (
@@ -46,7 +50,7 @@ class Artist:
         self.vgg.trainable = False
         self.layers = self.vgg.layers
 
-    def load_images(self, content_img_path=None, style_img_path=None):
+    def load_images(self, content_img_path:str=None, style_img_path:str=None):
         """
         Load style and content images
 
@@ -74,18 +78,18 @@ class Artist:
         self.content_image = content_image
         self.style_image = style_image
 
-    def compute_content_cost(self, content_output, generated_output):
+    def compute_content_cost(self, content_output:tf.Tensor, generated_output:tf.Tensor) -> tf.Tensor:
         """
         Computes the content cost
 
         Args:
-          a_C(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer 
+          a_C(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer
           activations representing content of the image C
-          a_G(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer 
+          a_G(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer
           activations representing content of the image G
 
         Returns
-          J_content(tf.Tensor): content cost
+          tf.Tensor: content cost
         """
         a_C = content_output[-1]
         a_G = generated_output[-1]
@@ -98,7 +102,7 @@ class Artist:
         )
         return J_content
 
-    def gram_matrix(self, A):
+    def gram_matrix(self, A:tf.Tensor) -> tf.Tensor:
         """
         Calculate the correlation coeff matrix to get a proxy to the
         image style
@@ -107,23 +111,23 @@ class Artist:
           A(tf.Tensor): matrix of shape (n_C, n_H*n_W)
 
         Returns
-          GA(tf.Tensor): Gram matrix of A, of shape (n_C, n_C)
+          tf.Tensor: Gram matrix of A, of shape (n_C, n_C)
         """
         GA = tf.matmul(A, tf.transpose(A))
         return GA
 
-    def compute_layer_style_cost(self, a_S, a_G):
+    def compute_layer_style_cost(self, a_S:tf.Tensor, a_G:tf.Tensor) -> tf.Tensor:
         """
         Computes the content cost
 
         Args:
-          a_S(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer 
+          a_S(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer
           activations representing style of the image S
-          a_G(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer 
+          a_G(tf.Tensor): tensor of dimension (1, n_H, n_W, n_C), hidden layer
           activations representing style of the image G
 
         Returns:
-          J_style_layer(tf.Tensor): style cost
+          tf.Tensor: style cost
         """
 
         m, n_H, n_W, n_C = a_G.get_shape().as_list()
@@ -134,22 +138,23 @@ class Artist:
         GS = self.gram_matrix(a_S)
         GG = self.gram_matrix(a_G)
         # compute the cost (Normalization constant * sum of squared distances)
-        J_style_layer = (
-            (1 / (2 * n_C * n_H * n_W))\
-            * tf.math.reduce_sum(tf.square(tf.subtract(GS, GG)))
+        J_style_layer = (1 / (2 * n_C * n_H * n_W)) * tf.math.reduce_sum(
+            tf.square(tf.subtract(GS, GG))
         )
         return J_style_layer
 
-    def define_content_style_layers(self, content_layer:List[Tuple], style_layers:List[Tuple]):
+    def define_content_style_layers(
+        self, content_layer: List[Tuple], style_layers: List[Tuple]
+    ):
         """
         Set the layers from where to catch style features and the weight
         assigned to each layer.
-        
+
         Args:
           content_layer(List[Tuple]): list with a single Tuple containing the name
           of the layer and the weight to be applied. Must always be the final
           layer.
-          style_layerscontent_layer(List[Tuple]): list with as many Tuple as 
+          style_layerscontent_layer(List[Tuple]): list with as many Tuple as
           existing layes, containing the name of the layers and the weights
           to be applied to each one
 
@@ -164,8 +169,9 @@ class Artist:
                 ("block5_conv1", 0.2),
             ]
           )
-        -----
-        Hint: The deeper the layer the more complex the features.
+        
+        Hint: 
+            The deeper the layer the more complex the features.
         """
         if style_layers is None:
             self.STYLE_LAYERS = [
@@ -179,14 +185,16 @@ class Artist:
             self.STYLE_LAYERS = style_layers
         self.vgg_model_outputs = self.get_layer_outputs(self.vgg, content_layer)
 
-
-    def get_layer_outputs(self, vgg:tf.keras.Model, content_layer:str):
+    def get_layer_outputs(self, vgg: tf.keras.Model, content_layer: str) -> tf.keras.Model:
         """
         Creates a vgg model that returns a list of intermediate output values
 
         Args:
           vgg(tf.keras.Model): model to be used
           content_layer('str'): indicates the content layer to be used
+        
+        Returns:
+          tf.keras.Model: get model outputs from the selected layers
         """
         layer_names = self.STYLE_LAYERS
         layer_names.extend(content_layer)
@@ -194,7 +202,9 @@ class Artist:
         model = tf.keras.Model([self.vgg.input], outputs)
         return model
 
-    def compute_style_cost(self, style_image_output:tf.Tensor, generated_image_output:tf.Tensor) -> tf.Tensor:
+    def compute_style_cost(
+        self, style_image_output: tf.Tensor, generated_image_output: tf.Tensor
+    ) -> tf.Tensor:
         """
         Computes the overall style cost from several chosen layers
 
@@ -204,8 +214,8 @@ class Artist:
         processed as a TF tensor
 
         Returns:
-          J_style(tf.Tensor): tensor representing a scalar value with the style
-          cost. To calculate it, we sum through all the weighted style cost for 
+          tf.Tensor: tensor representing a scalar value with the style
+          cost. To calculate it, we sum through all the weighted style cost for
           all the layers in the network
         """
         J_style = 0
@@ -217,25 +227,27 @@ class Artist:
         return J_style
 
     @tf.function()
-    def total_cost(self, J_content:tf.Tensor, J_style:tf.Tensor, alpha:float, beta:float) -> tf.Tensor:
+    def total_cost(
+        self, J_content: tf.Tensor, J_style: tf.Tensor, alpha: float, beta: float
+    ) -> tf.Tensor:
         """
         Computes the total cost function, summing alpha*J_content + beta*J_style
 
         Args:
           J_content(tf.Tensor): content cost
           J_style(tf.Tensor): style cost
-          alpha(float): hyperparameter weighting the importance of the 
+          alpha(float): hyperparameter weighting the importance of the
           content cost
-          beta(float): hyperparameter weighting the importance of the 
+          beta(float): hyperparameter weighting the importance of the
           style cost
 
         Returns:
-          J(tf.Tensor): total epoch cost
+          tf.Tensor: total epoch cost
         """
         J = alpha * J_content + beta * J_style
         return J
 
-    def clip_0_1(self, image) -> tf.Tensor:
+    def clip_0_1(self, image:tf.Tensor) -> tf.Tensor:
         """
         Truncate all the pixels in the tensor to be between 0 and 1
 
@@ -247,7 +259,7 @@ class Artist:
         """
         return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
 
-    def tensor_to_image(self, tensor):
+    def tensor_to_image(self, tensor:tf.Tensor) -> PIL.Image.Image:
         """
         Converts the given tensor into a PIL image
 
@@ -265,10 +277,10 @@ class Artist:
         return Image.fromarray(tensor)
 
     def preprocess(self):
-        """ 
+        """
         Preprocess the images to tf.Tensors
         """
-        #Generated image starts being = to content image in the 1st epoch
+        # Generated image starts being = to content image in the 1st epoch
         generated_image = tf.Variable(
             tf.image.convert_image_dtype(self.content_image, tf.float32)
         )
@@ -300,16 +312,18 @@ class Artist:
 
         Args:
           generated_image(tf.Tensor): tensor containing the generated image
-          alpha(float): hyperparameter weighting the importance of the 
+          alpha(float): hyperparameter weighting the importance of the
           content cost
-          beta(float): hyperparameter weighting the importance of the 
+          beta(float): hyperparameter weighting the importance of the
           style cost
         """
         with tf.GradientTape() as tape:
             self.a_G = self.vgg_model_outputs(generated_image)
             self.J_style = self.compute_style_cost(self.a_S, self.a_G)
             self.J_content = self.compute_content_cost(self.a_C, self.a_G)
-            self.J = self.total_cost(self.J_content, self.J_style, alpha=alpha, beta=beta)
+            self.J = self.total_cost(
+                self.J_content, self.J_style, alpha=alpha, beta=beta
+            )
         grad = tape.gradient(self.J, generated_image)
         self.optimizer.apply_gradients([(grad, generated_image)])
         generated_image.assign(self.clip_0_1(generated_image))
@@ -320,7 +334,7 @@ class Artist:
         content_img_path:str=None,
         style_img_path:str=None,
         content_layer:List[Tuple]=[("block5_conv4", 1)],
-        style_layers:List[Tuple]=None,
+        style_layers:List[Tuple]=None
     ):
         """
         Initialize the model
@@ -328,11 +342,11 @@ class Artist:
         Args:
         content_img_path(str, defaults to None): path to the content image
         style_img_path(str, defaults to None): path to the style image
-          content_layer(List[Tuple], defaults to [("block5_conv4", 1)]): list 
-          with a single Tuple containing the name of the layer and the weight 
+          content_layer(List[Tuple], defaults to [("block5_conv4", 1)]): list
+          with a single Tuple containing the name of the layer and the weight
           to be applied. Must always be the final layer.
           style_layers(List[Tuple], defaults to None): list with as many
-          Tuple as existing layers, containing the name of the layers and 
+          Tuple as existing layers, containing the name of the layers and
           the weights to be applied to each one
         """
         self.load_images(content_img_path, style_img_path)
@@ -351,7 +365,7 @@ class Artist:
         save_path:str="output/images/",
         plot:bool=False,
         plot_step:int=250,
-        fig_size:Tuple=(7, 7),
+        fig_size:Tuple=(7,7),
         early_stopping_rounds:int=100,
         skip_frames:bool=True
     ):
@@ -361,9 +375,9 @@ class Artist:
 
         Args:
           epochs(int, defaults to 2000): number of epochs to be runned
-          alpha(float, defaults to 1): hyperparameter weighting the importance of the 
+          alpha(float, defaults to 1): hyperparameter weighting the importance of the
           content cost
-          beta(float, defaults to 1): hyperparameter weighting the importance of the 
+          beta(float, defaults to 1): hyperparameter weighting the importance of the
           style cost
           verbose(bool, defaults to False): controls if log prints are made
           verbose_step(int, defaults to 250): controls the log printing assiduity
@@ -397,7 +411,7 @@ class Artist:
             self.train_step(self.generated_image, alpha=alpha, beta=beta)
             total_cost = self.J.numpy()
             if i == 0:
-              lowest_overal_cost  = total_cost
+                lowest_overal_cost = total_cost
             if verbose:
                 if i % verbose_step == 0:
                     print(f"Epoch {i} ")
@@ -423,32 +437,36 @@ class Artist:
                         image = self.tensor_to_image(self.generated_image)
 
                     if skip_frames:
-                      decay = (lowest_overal_cost-total_cost)/lowest_overal_cost
-                      if decay<=.05:
-                        pass   
-                      else: 
-                        image.save(f"{save_path}/{i}.jpg")
+                        decay = (lowest_overal_cost - total_cost) / lowest_overal_cost
+                        if decay <= 0.05:
+                            pass
+                        else:
+                            image.save(f"{save_path}/{i}.jpg")
                     else:
-                      image.save(f"{save_path}/{i}.jpg")       
+                        image.save(f"{save_path}/{i}.jpg")
 
-            if total_cost< lowest_overal_cost:
-              lowest_overal_cost = total_cost
-              non_improving_round = 0
+            if total_cost < lowest_overal_cost:
+                lowest_overal_cost = total_cost
+                non_improving_round = 0
             else:
-              non_improving_round+=1
-              if non_improving_round>=early_stopping_rounds:
-                break
-            writer.add_scalar(tag='Style loss', scalar_value=total_cost, global_step=i)
-            writer.add_scalar(tag='Content loss', scalar_value=self.J_content.numpy(), global_step=i)
-            writer.add_scalar(tag='Total loss', scalar_value=self.J.numpy(), global_step=i)
+                non_improving_round += 1
+                if non_improving_round >= early_stopping_rounds:
+                    break
+            writer.add_scalar(tag="Style loss", scalar_value=total_cost, global_step=i)
+            writer.add_scalar(
+                tag="Content loss", scalar_value=self.J_content.numpy(), global_step=i
+            )
+            writer.add_scalar(
+                tag="Total loss", scalar_value=self.J.numpy(), global_step=i
+            )
 
 
 class ImgsToVideo:
     """
     Convert a bunch of images into a video
-    
+
     Args:
-      images_path(str): path to the dir where the images are stored. Recall that 
+      images_path(str): path to the dir where the images are stored. Recall that
       the images must be in NUMERICAL order for the class to function well.
       frame_size (Tupple, default to (400x400)): manage the output's frames sizes
       output_video_name(str, defaults to 'output_video.avi'): output file name
@@ -476,7 +494,9 @@ class ImgsToVideo:
         imgs = [imgs_dict[sorted_key] for sorted_key in sorted_keys]
         self.imgs = imgs
 
-    def images_to_video(self, save_path:str="output/videos/", expand_beggining:int=1):
+    def images_to_video(
+        self, save_path:str="output/videos/", expand_beggining:int=1
+    ):
         """
         Convert images into video using cv2
 
