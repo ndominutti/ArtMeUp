@@ -2,36 +2,24 @@
 
 ### <b>Overview</b>
 
-ArtMeUp is an Style Transfer package, inspired by the content seen in deeplearning.ai's Deep Learning Specialization (more specifically in Module 4).<br>
+ArtMeUp is in first place an implementation of the research conducted by Leon A.Gatys, Alexander S.Ecker and Matthias Bethge in their work [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576), inspired by the content seen in deeplearning.ai's Deep Learning Specialization (Module 4). But this module has another functionalities like the hability to generate a transitioning video from the images that the model generates in every epoch.
 <br>
 
-This package has 2 main objectives:
-1) Perform Style Transfer from one image (content image) to another (style image),
-2) Create a video with the transition of this transformation. To archieve this aim we are going to use a vgg19 model.
+So, this package has 2 main objectives:
+1) Perform Style Transfer from one image (content image) to another (style image) -using a vgg19 as default base model-,
+2) Create a video with the transition of this transformation, like this one:
+
+![Gif of a neural style transfer transition](trial_images/artmeup.gif)
 
 <br>
 When runing the code, you can decide to stop after objective one (eg. save your images) or keep working to fulfill objective 2.
-
 <br>
 
 ----------
-<br>
-
 
 ### <b>Repo usage</b>
 
 To use this repo you should:
-> 1) Clone it to your machine
-> 2) Depending in the objective pursued you should instanciate class Artist, ImgsToVideo or both (take a glance inside example.ipynb to see an usage example)
+1) Clone it to your machine
+2) Depending in the objective pursued you should instanciate class __Artist__, __ImgsToVideo__ or both (take a glance to this [sample notebook](https://colab.research.google.com/drive/1k-E8njmqnKmWNzwkAvfIbaFzT3XF_VFL?usp=sharing#scrollTo=tDO4kVJP83nB) to see an end to end process)
 
-<br>
-
-------------
-
-<br>
-
-### <b>Moreover</b>
-
-* If you want to read a slightly more explained article from this project take a look at this Medium post: 
-
-* If you don't own a GPU in your local machine, it's highly recommended to run the code in a Google Colab environment (using the GPU), to take a look at an example get into this link:
