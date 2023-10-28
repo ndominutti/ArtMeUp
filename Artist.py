@@ -104,7 +104,7 @@ class Artist:
 
     def gram_matrix(self, A:tf.Tensor) -> tf.Tensor:
         """
-        Calculate the correlation coeff matrix to get a proxy to the
+        Calculate the correlation coef matrix to get a proxy to the
         image style
 
         Args
@@ -154,8 +154,8 @@ class Artist:
           content_layer(List[Tuple]): list with a single Tuple containing the name
           of the layer and the weight to be applied. Must always be the final
           layer.
-          style_layerscontent_layer(List[Tuple]): list with as many Tuple as
-          existing layes, containing the name of the layers and the weights
+          style_layers(List[Tuple]): list with as many Tuple as
+          existing layers, containing the name of the layers and the weights
           to be applied to each one
 
         Example:
@@ -370,11 +370,11 @@ class Artist:
         skip_frames:bool=True
     ):
         """
-        Process manager, in charge of running the whole trianing, saving
-        images and writing to tensorboard in (ArtMeUp/runs)
+        Process manager, in charge of running the whole training, saving
+        images and writing to the Tensorboard in (ArtMeUp/runs)
 
         Args:
-          epochs(int, defaults to 2000): number of epochs to be runned
+          epochs(int, defaults to 2000): number of epochs to be ran
           alpha(float, defaults to 1): hyperparameter weighting the importance of the
           content cost
           beta(float, defaults to 1): hyperparameter weighting the importance of the
@@ -382,19 +382,21 @@ class Artist:
           verbose(bool, defaults to False): controls if log prints are made
           verbose_step(int, defaults to 250): controls the log printing assiduity
           learning_rate(float, defaults to 0.01): learning rate for the optimizer
-          save_images(bool, defaults to True): controls wheter to save or not the
+          save_images(bool, defaults to True): controls whether to save or not the
           generated images
           save_step(int, defaults to 250): controls the images saving assiduity
           save_path(str, defaults to "output/images/"): path where to store the images
-          plot(bool, defaults to False): controls wheter to plot the images
+          plot(bool, defaults to False): controls whether to plot the images
           while training
           plot_step(int, defaults to 250): controls the images plotting assiduity
-          fig_size(Tupple, defaults to (7, 7)): controls the images plotting
+          fig_size(Tuple, defaults to (7, 7)): controls the images plotting
           size
           early_stopping_rounds(int, defaults to 100): if the total cost does
           not decreases for early_stopping_rounds, the process concludes
           skip_frames(bool, defaults to True): set to True if you don't want
-          to save very similar images (useful for videos)
+          to save very similar images (useful for videos). If set to True, when the
+          loss decay from epoch to epoch is less than 5%, the generated image won't
+          be saved.
         """
         self.preprocess()
         self.set_optimizer(learning_rate)
@@ -468,7 +470,7 @@ class ImgsToVideo:
     Args:
       images_path(str): path to the dir where the images are stored. Recall that
       the images must be in NUMERICAL order for the class to function well.
-      frame_size (Tupple, default to (400x400)): manage the output's frames sizes
+      frame_size (Tuple, default to (400x400)): manage the output's frames sizes
       output_video_name(str, defaults to 'output_video.avi'): output file name
       fps(int, defaults to 3): output file's fps
     """
@@ -495,15 +497,15 @@ class ImgsToVideo:
         self.imgs = imgs
 
     def images_to_video(
-        self, save_path:str="output/videos/", expand_beggining:int=1
+        self, save_path:str="output/videos/", expand_beginning:int=1
     ):
         """
         Convert images into video using cv2
 
         Args:
           save_path(str, defaults to output/videos/): path there to save the video
-          expand_beggining(bool, defaults to False): controls how many times the
-          first frame is multiplied. Useful to give a smoother begining to the
+          expand_beginning(bool, defaults to False): controls how many times the
+          first frame is multiplied. Useful to give a smoother beginning to the
           video.
         """
         save_path = save_path + f'run_{datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}'
@@ -516,10 +518,10 @@ class ImgsToVideo:
         self.read_images()
         images = self.imgs
         # Multiply the 1st image to create an smooth beginning
-        if expand_beggining:
+        if expand_beginning:
             if "0" in [x.split(".")[0] for x in images]:
                 extension = images[0].split(".")[1]
-                expansion = [f"0.{extension}"] * expand_beggining
+                expansion = [f"0.{extension}"] * expand_beginning
                 expansion.extend(images)
                 images = expansion
         fourcc = cv2.VideoWriter_fourcc(*"MP4V")
