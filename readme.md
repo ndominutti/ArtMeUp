@@ -2,7 +2,7 @@
 
 ### <b>Overview</b>
 
-ArtMeUp is in first place an implementation of the research conducted by Leon A.Gatys, Alexander S.Ecker and Matthias Bethge in their work [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576), inspired by the content seen in deeplearning.ai's Deep Learning Specialization (Module 4). But this module has another functionalities like the hability to generate a transitioning video from the images that the model generates in every epoch.
+ArtMeUp is primarily an implementation of the research conducted by Leon A. Gatys, Alexander S. Ecker, and Matthias Bethge in their work titled [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576). This project draws inspiration from the content covered in deeplearning.ai's Deep Learning Specialization, specifically Module 4. Additionally, __ArtMeUp__ offers the functionality to generate transition videos using the images produced by the model at each epoch.
 <br>
 
 So, this package has 2 main objectives:
@@ -21,7 +21,7 @@ When runing the code, you can decide to stop after objective one (eg. save your 
 
 To use this repo you should:
 1) Clone it to your machine
-2) Depending in the objective pursued you should instanciate class __Artist__, __ImgsToVideo__ or both (take a glance to this [sample notebook](https://colab.research.google.com/drive/1k-E8njmqnKmWNzwkAvfIbaFzT3XF_VFL?usp=sharing#scrollTo=tDO4kVJP83nB) to see an end to end process)
+2) Depending in the objective pursued you should use the class __Artist__, __ImgsToVideo__ or both (take a look at this [sample notebook](https://colab.research.google.com/drive/1k-E8njmqnKmWNzwkAvfIbaFzT3XF_VFL?usp=sharing#scrollTo=tDO4kVJP83nB) to understand the complete process of how the GIF you see above was created).
 
-Have in mind that when performing task 1, the __Artist__ will store the generated images in the ArtMeUp/output/images DIR, under a sub-dir with the time of the run. You can control the amount of saved images and another functionalities through the _run_ method in the __Artist__ class.
+__Hint:__ when performing task 1, the __Artist__ will store the generated images in the ArtMeUp/output/images DIR, under a partition with the time of the run. You can control the amount of saved images and another functionalities through the _run_ method in the __Artist__ class.
 
